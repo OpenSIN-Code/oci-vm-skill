@@ -567,14 +567,36 @@ Pattern gleich, aber: ssh -i aufgrund fehlendem Alias.
 
 | ID | Name | Type | Target | Interval | Status |
 |---|---|---|---|---|---|
-| 1 | sinchat.delqhi.com | HTTP | `https://sinchat.delqhi.com` | 60s | ✅ (mit Browser-User-Agent) |
+| 1 | sinchat.delqhi.com | HTTP | `http://172.22.0.2:3001` (direct container IP) | 60s | ✅ UP (via Docker network) |
 
-**⚠️ WICHTIG — Cloudflare Bot-Schutz:**
-Uptime Kuma nutzt intern curl, dessen User-Agent von Cloudflare blockiert wird (502 Bad Gateway). Lösung: Monitor-Header auf Browser-User-Agent setzen:
+**⚠️ WICHTIG — Cloudflare Bot-Schutz (2 Lösungswege):**
+
+**Lösung A (BEVORZUGT): Direkte Container-IP über Docker-Netzwerk**
+Kuma kann nicht zuverlässig durch Cloudflare prüfen (Bot-Schutz blockt auch mit Browser-UA). Stattdessen: Kuma-Container mit dem Ziel-Netzwerk verbinden und direkt prüfen:
+
+```bash
+# 1. Kuma mit dem opensin-chat Netzwerk verbinden
+docker network connect opensin_opensin-chat uptime-kuma
+
+# 2. Container-IP von opensin-app finden
+docker inspect opensin-app --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+# → z.B. 172.22.0.2
+
+# 3. Monitor auf direkte IP umstellen
+docker exec uptime-kuma sqlite3 /app/data/kuma.db \
+  "UPDATE monitor SET url='http://172.22.0.2:3001', hostname='172.22.0.2', port=3001, ignore_tls=1 WHERE id=1;"
+
+# 4. Kuma neu starten (lädt Monitor-Config neu)
+docker restart uptime-kuma
+```
+
+**Lösung B (FALLBACK): Browser-User-Agent Header (unzuverlässig!)**
+Funktioniert manchmal, aber Kuma cached die Monitor-Config im RAM und DB-Header werden nach Restart nicht immer übernommen:
 
 ```bash
 docker exec uptime-kuma sqlite3 /app/data/kuma.db \
   "UPDATE monitor SET headers='{\"User-Agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\"}', ignore_tls=1 WHERE id=1;"
+docker restart uptime-kuma
 ```
 
 **Typische Operationen:**
