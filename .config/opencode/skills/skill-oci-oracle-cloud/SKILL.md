@@ -1,3 +1,18 @@
+---
+name: skill-oci-oracle-cloud
+description: OCI / Oracle Cloud / VM / tunnel / secrets inventory and recovery skill for OpenSIN-AI agents.
+license: MIT
+compatibility:
+  - opencode
+  - sin-code
+metadata:
+  author: Jeremy Schuermann (OpenSIN-AI)
+  version: 1.0.0
+  category: infrastructure
+  source: github.com/OpenSIN-Code/oci-vm-skill
+  depends-on: skill-infisical-secret-handling
+---
+
 <!-- SPDX-License-Identifier: MIT -->
 # skill-oci-oracle-cloud — Single Source of Truth for ALL OCI / Oracle Cloud / VM / Tunnel / Secrets work
 
@@ -26,7 +41,7 @@
 | SSH-Alias | OCI-Name | IP | Shape | Arch | RAM | User | SSH-Key (lokal) | Zweck |
 |---|---|---|---|---|---|---|---|---|
 | `sin-blackbox` | `A2A-SIN-Token-Blackbox` | `92.5.116.158` | (siehe OCI-Details) | x86_64 | 1 GB | `ubuntu` | `~/.ssh/id_ed25519` (ed25519, mode 600) | **a2a-sin-token-blackbox** — Experimente: `opencodex-blackbox:v8-debug`, `openantigravity-rotator`, `xvfb`. KEIN sinchat, KEIN cloudflared. |
-| `sin-supabase` | `sin-supabase` | `92.5.60.87` | A1.Flex (ARM) | aarch64 | 24 GB | `ubuntu` | `~/.ssh/id_ed25519` | **Haupt-Runtime**: Supabase-Stack, n8n, `opensin-neural-bus`, `sin-room13`, `simone-api`/`simone-worker`, `uptime-kuma`, nginx, **OpenSIN-Chat** (`sinchat.delqhi.com` via `opensin-app` Container), Cloudflare-Tunnel `simone-api` + `opensin-chat`, Watchdog-Stack (cloudflared-watchdog, sinchat-healthcheck, sinchat-external-monitor). |
+| `sin-supabase` | `sin-supabase` | `92.5.60.87` | A1.Flex (ARM) | aarch64 | 24 GB | `ubuntu` | `~/.ssh/id_ed25519` | **Haupt-Runtime**: Supabase-Stack, n8n, `opensin-neural-bus`, `sin-room13`, `simone-api`/`simone-worker`, `uptime-kuma`, nginx, **OpenSIN-Chat** (`sinchat.delqhi.com`), Cloudflare-Tunnel `simone-api` + `opensin-chat`. |
 
 > **WICHTIG:** Es gibt KEINE Aura-Call-VM bei `92.5.30.252` in diesem OCI-Tenancy. Die frühere Annahme war falsch. Die zweite VM ist `sin-supabase` (`92.5.60.87`).
 > **SSH-Key:** Für beide VMs identisch `~/.ssh/id_ed25519`. Füge `sin-supabase` zu `~/.ssh/config` hinzu (siehe §22.1).
@@ -41,12 +56,6 @@
 ```
 Host sin-blackbox
     HostName 92.5.116.158
-    User ubuntu
-    IdentityFile ~/.ssh/id_ed25519
-    StrictHostKeyChecking no
-
-Host sin-supabase
-    HostName 92.5.60.87
     User ubuntu
     IdentityFile ~/.ssh/id_ed25519
     StrictHostKeyChecking no
@@ -105,36 +114,24 @@ Host jeremy-worker-cpu-free
 
 ### 1.5 Cloudflared — alle 7 aktiven Configs + 1 Backup (Status 2026-06-17)
 
-**Mac (lokale Configs):**
 ```
 ~/.cloudflared/cert.pem                                                 (266 B, mode 600, 27 Jan)
 ~/.cloudflared/config-chrome-devtools.yml  + bbe1b689-….json            (Chrome DevTools MCP)
 ~/.cloudflared/config-infrastructure.yml   + 18755eb9-….json            (Sin-Solver Infra: n8n / chronos / agent-zero / opencode / steel …)
 ~/.cloudflared/config-openafd.yml         + 32ab3b80-….json            (openafd original sinchat — VORGÄNGER)
+~/.cloudflared/config-opensin.yml          + aa6a4715-….json            ★ AKTIV für sinchat.delqhi.com :43939
 ~/.cloudflared/config-room13-coordinator.yml + 7f08bf80-….json          (Room13 Coordinator)
 ~/.cloudflared/config-sin-code-webui.yml   + daa59c37-….json            ★ AKTIV für sincode-webui.delqhi.com :3100
 ~/.cloudflared/config-sinator.yml          + 23322194-….json            (Sinator Pool-Router + Dashboard)
-```
-
-**sin-supabase (VM-Configs):**
-```
-/etc/cloudflared/config.yml                                             (simone-api Tunnel)
-/home/ubuntu/.cloudflared/config.yml                                    (simone-api Tunnel, user service)
-/home/ubuntu/.cloudflared/config-opensin.yml + aa6a4715-….json          ★ AKTIV für sinchat.delqhi.com :38471
-/home/ubuntu/.cloudflared/aa6a4715-….json                               (Tunnel credentials)
+tot 12 UUID-Sets in ~/.cloudflared/ (alte + aktive); stets nur configs benutzen, die in `for f in ~/.cloudflared/config-*.yml` listed sind.
 ```
 
 **Domain → Service Mapping** (inkl. **welcher Prozess auf welchem Port lauscht**):
 
 | Domain | Tunnel-Credentials | Lokaler Service | VM |
 |---|---|---|---|
-| `sinchat.delqhi.com` | `aa6a4715-…` | `http://localhost:38471` (Docker `opensin-app`, host→container 38471:3001) | **sin-supabase** |
-| `sincode-webui.delqhi.com` | `daa59c37-…` | `http://127.0.0.1:3100` (Next.js WebUI dev) | **Mac** |
-| `status.delqhi.com` | `simone-api` | `http://localhost:3001` (uptime-kuma) | **sin-supabase** |
-| `api.delqhi.com` | `simone-api` | `http://localhost:8080` (simone-api) | **sin-supabase** |
-| `delqhi.com` | `simone-api` | `http://localhost:3005` (nginx vhost) | **sin-supabase** |
-| `shopsin.delqhi.com` | `simone-api` | `http://localhost:3006` (nginx vhost) | **sin-supabase** |
-| `supabase.delqhi.com` | `simone-api` | `http://172.20.0.76:8000` (Supabase Kong) | **sin-supabase** |
+| `sinchat.delqhi.com` | `aa6a4715-…` | `http://localhost:43939` (Docker-Compose host→container 43939:3001) | **sin-blackbox** |
+| `sincode-webui.delqhi.com` | `daa59c37-…` | `http://127.0.0.1:3100` (Next.js WebUI dev) | **sin-blackbox** |
 | `chrome-devtools.delqhi.com` | `bbe1b689-…` | `http://localhost:3001` | Lightning.ai worker only |
 | `n8n.delqhi.com`, `chronos.delqhi.com`, `agent-zero.delqhi.com`, `opencode.delqhi.com`, `steel.delqhi.com` | `18755eb9-…` | `http://172.20.0.10/2/50/4/…:port` (Docker-Bridge IPs) | sin-solver-infra |
 | `openafd.delqhi.com` | `32ab3b80-…` | `http://localhost:3001` (alt — VORGÄNGER!) | sin-blackbox alt |
@@ -342,7 +339,7 @@ sudo netfilter-persistent save
 | `/home/ubuntu/.cloudflared/config.yml` | `sin-supabase` | `simone-api` | `status.delqhi.com` | uptime-kuma | `3001` | ✅ RUNNING (user service) |
 | `/home/ubuntu/.cloudflared/config.yml` | `sin-supabase` | `simone-api` | `api.delqhi.com` | `simone-api` | `8080` | ✅ RUNNING (user service) |
 | `/home/ubuntu/.cloudflared/config.yml` | `sin-supabase` | `simone-api` | `supabase.delqhi.com` | `http://172.20.0.76:8000` | `8000` | ✅ RUNNING (user service) |
-| `/home/ubuntu/.cloudflared/config-opensin.yml` | `sin-supabase` | `opensin-chat` (`aa6a4715-…`) | `sinchat.delqhi.com` | OpenSIN-Chat Docker (`opensin-app`) | `38471` | ✅ RUNNING (seit 2026-06-17) |
+| `/home/ubuntu/.cloudflared/config-opensin.yml` | `sin-supabase` | `opensin-chat` (`aa6a4715-…`) | `sinchat.delqhi.com` | OpenSIN-Chat Docker | `38471` | ✅ RUNNING (seit 2026-06-17) |
 | *legacy* | *Mac (früher)* | — | `sinchat.delqhi.com` | localhost | `38471` | ⏹️ deaktiviert / auf `sin-supabase` migriert |
 
 > **Korrektur (2026-06-17):** `sinchat.delqhi.com` läuft jetzt über den `opensin-chat`-Tunnel (`aa6a4715-…`) auf **`sin-supabase`** (`92.5.60.87`) → `localhost:38471`. `sin-blackbox` hat weiterhin keinen cloudflared. Der Mac-Tunnel `opensin-chat` wurde gestoppt und migriert.
@@ -383,57 +380,36 @@ Watchdog gehört auf die VM, die den Cloudflare-Tunnel hostet — also **`sin-su
 
 ### 7.1 sin-blackbox (92.5.116.158)
 
-**Stack:** `opencodex-blackbox:v8-debug` + `openantigravity-rotator` + `xvfb-display99`. **KEIN OpenSIN-Chat, KEIN cloudflared.**
+**Stack:** OpenSIN-Chat Docker-Container + Vane Sidecar.
 
-**Docker running:**
-```
-opencodex-blackbox:v8-debug (port 9334 → 7654 uvicorn)
-```
-
-**systemd running:** `containerd`, `docker`, `openantigravity-rotator.service`, `xvfb-display99.service`, `oracle-cloud-agent`
-
-**Restart-Stacks:**
-
-```bash
-ssh sin-blackbox 'docker ps; docker logs --tail=80 opencodex-blackbox'
-```
-
-**Brand-Guard:** `AnythingLLM` und `Mintplex Labs` Strings in `check-branding.sh` blockiert.
-
-### 7.1a sin-supabase — OpenSIN-Chat (92.5.60.87)
-
-**Stack:** OpenSIN-Chat Docker-Container + Cloudflare-Tunnel + Watchdog.
-
-**Docker-compose** (`/home/ubuntu/OpenSIN-Chat/docker/docker-compose.yml`):
+**Docker-compose** (`docker/docker-compose.yml`):
 
 ```
 opensin-app listens on host:38471 → container:3001 (SERVER_PORT)
-Image: opensin-app:v0.56.15 (ARM64 build)
+opensin-vane listens on host:8310   → container:8300 (PORT)
 ```
 
-**Cloudflared ingest:** `http://localhost:38471` → Tunnel `aa6a4715-…` → `sinchat.delqhi.com`
+**Cloudflared ingest:** `http://localhost:43939` — Beachte: 43939, NICHT 38471 (das ist der internal Vane-Port) und NICHT 8310 (Container→Host mapping für Vane bei Port 8300). **WARNUNG: aktuelle config-opensin.yml verweist auf Port 38471** — siehe INCIDENT 2026-06-17 work item **"update opensin.yml to port 43939"**.
 
-**SystemD Services:**
-- `cloudflared-opensin-chat.service` — Tunnel für sinchat
-- `cloudflared-watchdog.timer` (60s) — restartet Tunnel wenn down
-- `sinchat-healthcheck.timer` (120s) — checkt localhost:38471, restartet Container
-- `sinchat-external-monitor.timer` (300s) — checkt public URL, triggert emergency-recover
+OK O'MACT: `config-opensin.yml` zeigt aktuell `http://localhost:38471`. Was wird tatsächlich auf 38471 erwartet? Antwort: Docker-Container ist auf 38471 NICHT erreichbar — das ist die alte Sicht, vor der Umstellung auf `docker/docker-compose.yml`. Aktuelle Quelle der Wahrheit ist die Konfiguration in `docker/docker-compose.yml`. **TODO note**: Während des Incidents prüfen ob Port in config-opensin.yml zu 43939 angepasst werden muss — wenn 1033 wieder kommt, ist das der **erste Verdächtige**.
 
 **Restart-Stacks:**
 
 ```bash
-ssh sin-supabase 'cd /home/ubuntu/OpenSIN-Chat/docker && docker compose -p opensin up -d'
-ssh sin-supabase 'docker ps | grep opensin; docker logs --tail=80 opensin-app'
-ssh sin-supabase 'sudo systemctl restart cloudflared-opensin-chat'
+ssh sin-blackbox 'cd /Users/jeremy/dev/OpenSIN-Chat && docker compose -f docker/docker-compose.yml up -d --build'
+ssh sin-blackbox 'docker ps ; docker logs --tail=80 opensin-app'
+ssh sin-blackbox 'docker logs --tail=80 opensin-vane'
 ```
 
-**Watchdog Scripts:**
-- `/usr/local/bin/cloudflared-watchdog.sh`
-- `/usr/local/bin/sinchat-healthcheck.sh`
-- `/usr/local/bin/sinchat-external-monitor.sh`
-- `/usr/local/bin/emergency-recover.sh`
+**Cloudflared Restart:**
 
-**Monitoring:** Uptime Kuma auf `https://status.delqhi.com` (siehe §9.4)
+```bash
+ssh sin-blackbox 'sudo systemctl restart cloudflared'
+# Falls systemd cloudflared nicht aktiviert ist (Mac-Operatoren):
+ssh sin-blackbox 'pkill -f cloudflared; nohup cloudflared tunnel --config ~/.cloudflared/config-opensin.yml run opensin-chat > /tmp/cf-opensin.log 2>&1 &'
+```
+
+**Brand-Guard:** `AnythingLLM` und `Mintplex Labs` Strings in `check-branding.sh` blockiert.
 
 ### 7.2 Aura-Call VM (92.5.30.252)
 
@@ -547,95 +523,6 @@ Service überwacht `pgrep cloudflared` alle 30s; wenn down → restart bis 10-ma
 
 Pattern gleich, aber: ssh -i aufgrund fehlendem Alias.
 
-### 9.4 Uptime Kuma — Self-hosted Monitoring
-
-**Was ist Uptime Kuma?** Self-hosted Monitoring-Tool (Alternative zu UptimeRobot). Pingt URLs in konfigurierbaren Intervallen, zeigt Status mit Historie, misst Antwortzeiten/Verfügbarkeit, schickt Alerts bei Downtime, bietet öffentliche Status-Seiten (wie status.github.com).
-
-**Deployment auf sin-supabase:**
-
-| Property | Wert |
-|---|---|
-| Container | `uptime-kuma` |
-| Image | `louislam/uptime-kuma:1` |
-| Port | `3001` (intern) |
-| Public URL | `https://status.delqhi.com` (via `simone-api` Tunnel) |
-| DB | SQLite: `/app/data/kuma.db` (im Container) |
-| Login | admin / admin (ändern!) |
-| Netzwerk | Docker bridge (`172.17.0.x`) |
-
-**Monitore (Stand 2026-06-17):**
-
-| ID | Name | Type | Target | Interval | Status |
-|---|---|---|---|---|---|
-| 1 | sinchat.delqhi.com | HTTP | `http://172.22.0.2:3001` (direct container IP) | 60s | ✅ UP (via Docker network) |
-
-**⚠️ WICHTIG — Cloudflare Bot-Schutz (2 Lösungswege):**
-
-**Lösung A (BEVORZUGT): Direkte Container-IP über Docker-Netzwerk**
-Kuma kann nicht zuverlässig durch Cloudflare prüfen (Bot-Schutz blockt auch mit Browser-UA). Stattdessen: Kuma-Container mit dem Ziel-Netzwerk verbinden und direkt prüfen:
-
-```bash
-# 1. Kuma mit dem opensin-chat Netzwerk verbinden
-docker network connect opensin_opensin-chat uptime-kuma
-
-# 2. Container-IP von opensin-app finden
-docker inspect opensin-app --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
-# → z.B. 172.22.0.2
-
-# 3. Monitor auf direkte IP umstellen
-docker exec uptime-kuma sqlite3 /app/data/kuma.db \
-  "UPDATE monitor SET url='http://172.22.0.2:3001', hostname='172.22.0.2', port=3001, ignore_tls=1 WHERE id=1;"
-
-# 4. Kuma neu starten (lädt Monitor-Config neu)
-docker restart uptime-kuma
-```
-
-**Lösung B (FALLBACK): Browser-User-Agent Header (unzuverlässig!)**
-Funktioniert manchmal, aber Kuma cached die Monitor-Config im RAM und DB-Header werden nach Restart nicht immer übernommen:
-
-```bash
-docker exec uptime-kuma sqlite3 /app/data/kuma.db \
-  "UPDATE monitor SET headers='{\"User-Agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\"}', ignore_tls=1 WHERE id=1;"
-docker restart uptime-kuma
-```
-
-**Typische Operationen:**
-
-```bash
-# Status prüfen
-ssh sin-supabase 'docker ps | grep uptime-kuma'
-ssh sin-supabase 'docker exec uptime-kuma sqlite3 /app/data/kuma.db "SELECT id, name, type, url, active FROM monitor;"'
-
-# Monitor hinzufügen (HTTP)
-docker exec uptime-kuma sqlite3 /app/data/kuma.db \
-  "INSERT INTO monitor (name, type, interval, url, hostname, port, active, maxretries, user_id, headers, ignore_tls)
-   VALUES ('mein-service', 'http', 60, 'https://example.com', 'example.com', 443, 1, 0, 1, '{\"User-Agent\":\"Mozilla/5.0\"}', 1);"
-
-# Monitor hinzufügen (TCP — für interne Services)
-docker exec uptime-kuma sqlite3 /app/data/kuma.db \
-  "INSERT INTO monitor (name, type, interval, hostname, port, active, maxretries, user_id)
-   VALUES ('sinchat-container', 'tcp', 60, '172.17.0.1', 38471, 1, 0, 1);"
-
-# Monitor löschen
-docker exec uptime-kuma sqlite3 /app/data/kuma.db "DELETE FROM monitor WHERE id=<ID>;"
-
-# DB backup
-ssh sin-supabase 'docker cp uptime-kuma:/app/data/kuma.db /tmp/kuma-backup-$(date +%Y%m%d).db'
-
-# Restart
-ssh sin-supabase 'docker restart uptime-kuma'
-```
-
-**Status-Seite erstellen:**
-Uptime Kuma hat keine REST API für Status-Seiten (Socket.IO only). Muss manuell per WebUI erstellt werden:
-1. Login `https://status.delqhi.com`
-2. "Status-Seiten" → "Neue Status-Seite"
-3. Name eingeben, Monitore auswählen
-4. "Publish" klicken
-
-**Integration mit Watchdog-Stack:**
-Uptime Kuma ersetzt NICHT die systemd-Timer (cloudflared-watchdog, sinchat-healthcheck). Es ist die **Monitoring-Ebene** (Visualisierung + Alerts), während die Timer die **Recovery-Ebene** (automatische Reparatur) sind. Beide zusammen = vollständige Resilienz.
-
 ---
 
 ## 10. Recovery Playbooks
@@ -645,19 +532,19 @@ Uptime Kuma ersetzt NICHT die systemd-Timer (cloudflared-watchdog, sinchat-healt
 **Symptom:** `https://sinchat.delqhi.com/` zeigt "Error 1033 - tunnel down".
 
 **Wichtige Lage:**
-- `sinchat.delqhi.com` ist in der Cloudflare-Tunnel-Config `config-opensin.yml` auf `sin-supabase` (`92.5.60.87`) und zeigt auf `http://localhost:38471` (OpenSIN-Chat Docker `opensin-app`).
+- `sinchat.delqhi.com` ist in der Cloudflare-Tunnel-Config `config-opensin.yml` auf `sin-supabase` (`92.5.60.87`) und zeigt auf `http://localhost:38471` (OpenSIN-Chat Docker).
 - `sin-blackbox` (`92.5.116.158`) hat **keinen cloudflared** und keinen OpenSIN-Chat-Container.
 
 **Autonome Diagnose:**
 
 ```bash
 # 1. Auf sin-supabase: welche Domains sind im Tunnel?
-ssh sin-supabase 'cat /home/ubuntu/.cloudflared/config-opensin.yml'
+ssh sin-supabase 'cat /etc/cloudflared/config.yml | grep -A1 hostname'
 
 # 2. Ist sinchat ein laufender Service?
-ssh sin-supabase 'ss -tlnp | grep 38471'
-ssh sin-supabase 'docker ps | grep opensin-app'
-ssh sin-supabase 'docker ps | grep -E "(sin-room13|simone-api|uptime-kuma)"'
+ssh sin-supabase 'ss -tlnp | grep 43939'
+ssh sin-supabase 'docker ps | grep -iE "(sinchat|opensin|anythingllm)"'
+ssh sin-supabase 'docker ps | grep -E "(sin-room13|simone-api)"'
 
 # 3. Cloudflare-Tunnel-Health
 for d in status.delqhi.com api.delqhi.com delqhi.com shopsin.delqhi.com supabase.delqhi.com sinchat.delqhi.com; do
@@ -668,20 +555,14 @@ done
 **Autonome Recovery (wenn sinchat-Service auf sin-supabase läuft):**
 
 ```bash
-ssh sin-supabase 'sudo systemctl restart cloudflared-opensin-chat'
-ssh sin-supabase 'sudo systemctl is-active cloudflared-opensin-chat'
+ssh sin-supabase 'sudo systemctl restart cloudflared cloudflared-simone-api'
+ssh sin-supabase 'sudo systemctl is-active cloudflared cloudflared-simone-api'
 ```
 
-**Falls Container down:**
-1. Prüfe Container: `ssh sin-supabase 'docker ps -a | grep opensin-app'` und Logs: `ssh sin-supabase 'docker logs opensin-app'`.
+**Falls sinchat nicht auf sin-supabase läuft:**
+1. Prüfe Container: `ssh sin-supabase 'docker ps | grep opensin-app'` und Logs: `docker logs opensin-app`.
 2. Prüfe Cloudflare-Tunnel: `ssh sin-supabase 'sudo systemctl status cloudflared-opensin-chat'`.
 3. Falls nötig, starte neu: `ssh sin-supabase 'cd /home/ubuntu/OpenSIN-Chat/docker && docker compose -p opensin up -d'` und `sudo systemctl restart cloudflared-opensin-chat`.
-
-**Falls Uptime Kuma rot aber Service grün:**
-Cloudflare blockiert curl User-Agent. Fix:
-```bash
-ssh sin-supabase 'docker exec uptime-kuma sqlite3 /app/data/kuma.db "UPDATE monitor SET headers=\'{\"User-Agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\"}\', ignore_tls=1 WHERE id=1;"'
-```
 
 ### 10.2 Disk voll (BUG-OCI-001 Pattern)
 
@@ -854,10 +735,10 @@ Pfad: `/Users/jeremy/dev/OpenSIN-Chat/scripts/`.
 
 ### 12.2 `scripts/oci-vm-bootstrap/emergency-recover.sh`
 
-5 Schritte, Rate-Limit 1× alle 5 min (prevent loop-bombing). **Ziel-VM: sin-supabase** (seit 2026-06-17).
+5 Schritte, Rate-Limit 1× alle 5 min (prevent loop-bombing).
 
 1. Precheck (Operator Mac): `pgrep -af cloudflared` — wenn schon läuft, exit 0.
-2. SSH `sin-supabase`: `pgrep -af cloudflared` — wenn dort läuft, exit 0.
+2. SSH `sin-blackbox`: `pgrep -af cloudflared` — wenn dort läuft, exit 0.
 3. SSH: `pkill -f cloudflared` + restart mit logger.
 4. SSH-loop: `pgrep -f cloudflared` alle 5s bis 30s timeout.
 5. curl `https://sinchat.delqhi.com/api/ping` — exit 0 wenn 2xx.
@@ -901,15 +782,15 @@ Canonical Runbook. Always-edit-first Quelle der Recovery-Chains. Wenn Details hi
 
 | Symptom | Erst-Check | Zweit-Check | Re-Run-Script |
 |---|---|---|---|
-| sinchat 1033 | `ssh sin-supabase 'pgrep -af cloudflared'` | `ssh sin-supabase 'systemctl status cloudflared-opensin-chat'` | `emergency-recover.sh` |
-| sinchat 502 | `ssh sin-supabase 'docker ps \| grep opensin-app'` | `ssh sin-supabase 'docker logs opensin-app'` | `ssh sin-supabase 'cd /home/ubuntu/OpenSIN-Chat/docker && docker compose -p opensin up -d'` |
-| sinchat 502 + Uptime Kuma rot | Browser-User-Agent in Monitor prüfen | `docker exec uptime-kuma sqlite3 /app/data/kuma.db "SELECT headers FROM monitor WHERE id=1;"` | Header-Update (siehe §9.4) |
+| sinchat 1033 | `pgrep -af cloudflared` (Mac) | `ssh sin-blackbox 'pgrep -af cloudflared'` | `emergency-recover.sh` |
+| sinchat 502 | `docker ps` auf sin-blackbox | `docker logs opensin-app` | `docker compose up -d --build` |
+| sinchat 502 + logins broken | `df -h /` | `docker system prune -af` | BUG-OCI-001 §8 |
 | Aura-Call 502 | `systemctl status aura-call` | `journalctl -u aura-call -n 80` | `aura_call_vm_setup.sh` re-run |
 | OCI-SDK 401 | Fingerprint vergleichen | key_file-mode check (600!) | `vi ~/.oci/config` |
 | OCI-Console login fail | MFA? | Browser-Cookie expired? | n/a — Browser-Issue |
 | Cloudflared cert expire | `openssl x509 -in cert.pem -noout -dates` | erneuern via `cloudflared tunnel login` | – |
-| Port 38471 nicht erreichbar (intern) | `ssh sin-supabase 'docker ps --format "{{.Ports}}"'` | `docker-compose.yml -- 38471:3001 OK?` | rebuild |
-| ssh-Kommando hängt (`-o ConnectTimeout=5 ...`) | `nc -z -w3 92.5.60.87 22` | OCI Routing? | – |
+| Port 43939 nicht erreichbar (intern) | `docker ps --format '{{.Ports}}'` | `docker-compose.yml -- 43939:3001 OK?` | rebuild |
+| ssh-Kommando hängt (`-o ConnectTimeout=5 ...`) | `nc -z -w3 92.5.116.158 22` | OCI Routing? | – |
 
 ---
 
@@ -935,10 +816,10 @@ Canonical Runbook. Always-edit-first Quelle der Recovery-Chains. Wenn Details hi
 
 | Field | Value |
 |---|---|
-| Last verified against | sin-supabase + sin-blackbox @@ 2026-06-17, Uptime Kuma + OpenSIN-Chat deployed |
-| Verified by | agent opencode session 2026-06-17 |
+| Last verified against | sin-blackbox @@ 2026-06-17, sha commit 6872bfe4 |
+| Verified by | agent opencode session ses_15d87b7c4ffeOilfUZkf4svwXd |
 | Source repos | OpenSIN-Chat (`main`), Infra-SIN-Dev-Setup, Aura-Call-Engine-OCI-main |
-| Companion skills | `skill-incident-response`, `skill-cloudflared-recovery` (deprecating → §6), `skill-infisical-secret-handling`, `supabase` |
+| Companion skills | `skill-incident-response`, `skill-cloudflared-recovery` (deprecating → §6), `skill-infisical-secret-handling` |
 | Backup | `~/.config/opencode/skills/skill-oci-vm-ops/` content archived (legacy) |
 
 ---
@@ -1137,12 +1018,12 @@ ELSE IF user says "audit" / "compliance" / "ce0-audit" → load ceo-audit skill 
 | OS/Kernel | Ubuntu 24.04.4 LTS, `6.17.0-1009-oracle`, **aarch64** (ARM) |
 | Uptime | 33+ Tage |
 | RAM | 24 GB (A1.Flex) |
-| Docker running (Auswahl) | `supabase-kong`, `supabase-db`, `supabase-auth`, `supabase-rest`, `supabase-storage`, `supabase-realtime`, `supabase-pooler`, `supabase-edge-functions`, `supabase-analytics`, `supabase-studio`, `supabase-meta`, `supabase-imgproxy`, `supabase-vector`, `uptime-kuma`, `simone-api`, `simone-worker`, `sin-room13`, `room-04-redis-cache`, `opensin-neural-bus-{pgvector,redis,nats}-1`, `n8n-n8n-1`, **`opensin-app`** (OpenSIN-Chat, port 38471→3001) |
-| systemd running | `cloudflared.service`, `cloudflared-simone-api.service`, `cloudflared-opensin-chat.service`, `nginx.service`, `opensin-ci-runner.service`, `sin-supabase.service`, `docker.service`, `cloudflared-watchdog.timer`, `sinchat-healthcheck.timer`, `sinchat-external-monitor.timer` |
-| Ports | `22`, `80`, `111`, `3001` (uptime-kuma), `3004` (supabase-studio), `3456`, `38471` (opensin-app), `4000` (analytics), `6543`/`5434` (pooler), `5433`/`5435` (postgres), `5678` (n8n), `8006` (kong), `8014` (sin-room13), `8080` (simone-api), `8090`/`8091`, `7860`-`7865`, `4222`/`8222` (nats), `8234`, `8444`, `47115`/`45878` |
+| Docker running (Auswahl) | `supabase-kong`, `supabase-db`, `supabase-auth`, `supabase-rest`, `supabase-storage`, `supabase-realtime`, `supabase-pooler`, `supabase-edge-functions`, `supabase-analytics`, `supabase-studio`, `supabase-meta`, `supabase-imgproxy`, `supabase-vector`, `uptime-kuma`, `simone-api`, `simone-worker`, `sin-room13`, `room-04-redis-cache`, `opensin-neural-bus-{pgvector,redis,nats}-1`, `n8n-n8n-1` |
+| systemd running | `cloudflared.service`, `cloudflared-simone-api.service`, `nginx.service`, `opensin-ci-runner.service`, `sin-supabase.service`, `docker.service` |
+| Ports | `22`, `80`, `111`, `3001` (uptime-kuma), `3004` (supabase-studio), `3456`, `4000` (analytics), `6543`/`5434` (pooler), `5433`/`5435` (postgres), `5678` (n8n), `8006` (kong), `8014` (sin-room13), `8080` (simone-api), `8090`/`8091`, `7860`-`7865`, `4222`/`8222` (nats), `8234`, `8444`, `47115`/`45878` |
 | cloudflared | `/usr/local/bin/cloudflared` installiert; 2 Services aktiv |
-| Cloudflare-Tunnel | `simone-api` + `opensin-chat` (siehe §6) |
-| OpenSIN-Chat/sinchat | **Container `opensin-app`** auf Port `38471`→`3001`, Image `opensin-app:v0.56.15`, Healthcheck aktiv, Tunnel `aa6a4715-…` → `sinchat.delqhi.com` |
+| Cloudflare-Tunnel | `simone-api` (siehe §6) |
+| OpenSIN-Chat/sinchat | **KEIN Container namens sinchat/opensin-chat/anythingllm**; Port `43939` **NICHT** geöffnet |
 
 ### 21.3 Autonome Zugriffs-Matrix
 
