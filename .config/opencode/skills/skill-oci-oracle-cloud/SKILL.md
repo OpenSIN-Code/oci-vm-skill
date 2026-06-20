@@ -1,3 +1,18 @@
+---
+name: skill-oci-oracle-cloud
+description: OCI / Oracle Cloud / VM / tunnel / secrets inventory and recovery skill for OpenSIN-AI agents.
+license: MIT
+compatibility:
+  - opencode
+  - sin-code
+metadata:
+  author: Jeremy Schuermann (OpenSIN-AI)
+  version: 1.0.0
+  category: infrastructure
+  source: github.com/OpenSIN-Code/oci-vm-skill
+  depends-on: skill-infisical-secret-handling
+---
+
 <!-- SPDX-License-Identifier: MIT -->
 # skill-oci-oracle-cloud — Single Source of Truth for ALL OCI / Oracle Cloud / VM / Tunnel / Secrets work
 
